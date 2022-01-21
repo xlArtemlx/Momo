@@ -1,0 +1,17 @@
+.info-block{
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-start;
+    flex-direction: column;
+    margin: 30px;
+    cursor: pointer;
+    width: 250px;
+    padding: 20px;
+    border: 1px solid red;
+}
+.info{
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    flex-wrap: wrap;
+}
