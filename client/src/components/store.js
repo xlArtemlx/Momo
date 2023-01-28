@@ -5,7 +5,7 @@ class Store {
     fastMA = 10
     slowMA = 15
     riskPercent = 1
-    timeFrame = '1m'
+    timeFrame = '1h'
     startTime = 1629098438
 
     constructor() {

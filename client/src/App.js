@@ -17,9 +17,9 @@ function App() {
       {/* <Ticker/>
       <Account />
       <StartButtom/> */}
-      <TestRandom/>
+      {/* <TestRandom/> */}
       {/* <BalanceOfPower/> */}
-      {/* <RealPower/> */}
+      <RealPower/>
     </div>
   );
 }

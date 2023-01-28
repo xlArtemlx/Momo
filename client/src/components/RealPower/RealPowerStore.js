@@ -3,7 +3,9 @@ import TestnetService from '../../Service/TestnetService'
 import {createBalanceOfPower,round} from '../RealTraiding/Account/create'
 import {toJS} from 'mobx'
 import {info} from './info'
-import macd from 'macd'
+import {bolindger} from './bolindger';
+
+import {checkTime} from './utils'
 
 function getDepoUSDT(res){
     let depo = 0;
@@ -39,11 +41,12 @@ class RealPowerStore {
     ask = 0
     bid = 0
     symbol = 'BTCUSDT'
-    interval = '1m'
-    MACD = {MACD:0,histogram:0,signal:0}
+    interval = '30m'
+    period = 10
     allCandles = []
     status = ''
     info = []
+    isTraiding = false
     balance = 0
     count = 0
     countPercent = 0
@@ -52,13 +55,14 @@ class RealPowerStore {
     position = {balance:0,fee:0,deposit:0,price:0,marga:0,coin:0,risk:0,slideMoney:0,profit:0,side:'',takeProfit:0,stopLoss:0,slide:0}
     balanceOfPower = 0
     toggle = false
-    shoulder = 15
-    riskPercent = 3.5
+    shoulder = 3
+    riskPercent = 2
     slide = 2
-    coef = 3.2
+    coef = 3.5
+
     constructor() {
         makeAutoObservable(this)
-        autorun(()=>{this.fetchAccount();this.fetchCandle();this.fetchTicker()})
+        autorun(()=>{this.fetchAccount();this.socketCandle();this.socketTicker()})
     }
 
     fetchAccount = async () => {
@@ -85,7 +89,7 @@ class RealPowerStore {
         };
     }
     
-    fetchTicker = async () => {
+    socketTicker = async () => {
         const symbol = this.symbol.toLowerCase()
         const ws = new WebSocket(`wss://stream.binancefuture.com/ws/${symbol}@bookTicker`)
             ws.onmessage = (e) => {
@@ -97,20 +101,21 @@ class RealPowerStore {
             };
     }
 
-    fetchCandle = async () => {
+    socketCandle = async () => {
         const symbol = this.symbol.toLowerCase()
         const ws = new WebSocket(`wss://stream.binancefuture.com/ws/${symbol}@kline_${this.interval}`)
             ws.onmessage = (e) => {
                 const data = JSON.parse(e.data)
                 this.setCandle(data)
+                this.check()
             };
     }
     fetchAllCandles = async () => {
-        const data = { symbol: this.symbol,interval:this.interval,limit:150 }
+        const data = {symbol: this.symbol, interval: this.interval, limit: this.period + 1}
         const candles = await TestnetService.getAllCandles(data)
         return newClose(candles)
     }
-    createOrder = async (side,indicator) => {
+    createOrder = async (side) => {
         this.setStatus(info.openLimit)
         const balance = Number(getDepoUSDT(await TestnetService.balance()))
         const oldDepo = +(balance/100).toFixed(2)
@@ -120,14 +125,10 @@ class RealPowerStore {
         const fee = ((price * coin) * 0.04)/100 * 2
         const depo = +((price*coin)/this.shoulder).toFixed(2)
         let marga = +(depo * this.shoulder).toFixed(2)
-        let risk = round(((depo * this.riskPercent / 100)-fee),3)
+        let risk = round(((depo * this.riskPercent / 100)+fee),3)
         let slide = round((depo * this.slide / 100),3)
         let profit = round((risk*this.coef),3)
         
-        // const tpB = round((marga + profit) / coin,3)
-        // const stlB = round((marga - profit) / coin,3) //TUT
-        // const tpS = round((marga - risk) / coin,3) //TUT
-        // const stlS = round((marga + risk) / coin,3)
         const points = createBalanceOfPower(side,price,coin,profit,risk,slide)
         this.setPosition({
             balance:balance,
@@ -137,9 +138,6 @@ class RealPowerStore {
             marga:marga ,
             coin:coin,
             risk:risk,
-            MACD:indicator.MACD[149],
-            signal:indicator.signal[149],
-            histogram:indicator.histogram[149],
             slideMoney:slide,
             profit:profit,
             side:side,
@@ -153,9 +151,9 @@ class RealPowerStore {
         const order = {
             symbol: this.symbol,
             side: side,
-            type:'LIMIT',
-            quantity:coin,
-            price:price,
+            type: 'LIMIT',
+            quantity: coin,
+            price: price,
             timeInForce: 'GTC'
         }
         await TestnetService.order(order) // ORDER OFF =====================
@@ -181,7 +179,7 @@ class RealPowerStore {
             timeInForce : 'GTC',
             quantity : this.position.coin,
             stopPrice : this.position.stopLoss,
-            price:this.position.stopLoss, 
+            price: this.position.stopLoss, 
         }
         this.setStatus(info.openPosition)
         TestnetService.order(orderProfit)
@@ -189,16 +187,18 @@ class RealPowerStore {
     }
 
     check = async () => {
-        if(!this.toggle)return
-        if(this.status === info.openLimit||this.status === info.openPosition)return 
+        // if(!checkTime()) return
+        if(this.status === info.openLimit||this.status === info.openPosition) return
+        if(!this.isTraiding) return
         const candles = await this.fetchAllCandles()
         if(!candles.length)return
-        const indicator = macd(candles,121,71,50)
-       
-        if(this.MACD.histogram<0&&indicator.histogram[149]>0&&indicator.MACD[149]>indicator.signal[149]){
-            this.createOrder('BUY',indicator)
-        }else if(this.MACD.histogram>0&&indicator.histogram[149]<0&&indicator.MACD[149]<indicator.signal[149]){
-            this.createOrder('SELL',indicator)
+        candles.pop()
+        const {upper, lower} = bolindger(candles, this.period)
+        console.log(upper, lower)
+        if(candles[candles.length-1] < lower){
+            this.createOrder('BUY')
+        }else if(candles[candles.length-1] > upper){
+            this.createOrder('SELL')
         }
     }
 
@@ -207,12 +207,6 @@ class RealPowerStore {
         this.setStatus(info.empty)
         const balance = Number(getDepoUSDT(await TestnetService.balance()))
         this.setCountPercent(this.countPercent+calc(this.balance,balance))
-
-        const candles = await this.fetchAllCandles()
-        if(!candles.length)return
-        const macdArr = macd(candles,121,71,50)
-        this.setMACD({MACD:macdArr.MACD[149],histogram:macdArr.histogram[149],signal:macdArr.signal[149]})
-
         this.setCount(this.count+1)
         this.setBalance(Number(balance))
     }
@@ -224,21 +218,14 @@ class RealPowerStore {
             low:Number(data.k.l),
         }
     }
-    setBalanceOfPower = async () => {
-        const candles = await this.fetchAllCandles()
-        if(!candles.length)return
-        const macdArr = macd(candles,121,71,50)
-
-        const balance = Number(getDepoUSDT(await TestnetService.balance()))
-        this.setBalance(balance)
-        this.setMACD({MACD:macdArr.MACD[149],histogram:macdArr.histogram[149],signal:macdArr.signal[149]})
-        
-        runInAction(()=>{
-            this.toggle = true
-        })
-        checkInterval = setInterval(()=>{
-            this.check()
-        },60000) //300000
+    startTraiding = async () => {
+        try {
+            const balance = Number(getDepoUSDT(await TestnetService.balance()))
+            this.setBalance(balance)
+            this.setIsTraiding(true)
+        } catch(e){
+            console.log(e)
+        }
     }
 
     checkOrders =  async () => {
@@ -247,6 +234,9 @@ class RealPowerStore {
             await TestnetService.deleteOrders({symbol:this.symbol})
             this.createProfitOrders()
         }
+    }
+    setIsTraiding = (isTraiding) => {
+        this.isTraiding = isTraiding
     }
     stopTraiding = () => {
         clearInterval(checkInterval)
@@ -275,11 +265,6 @@ class RealPowerStore {
     setCurrentBofP = (BofP) => {
         this.currentBofP = BofP
     }
-    setMACD = (macd) => {
-        this.MACD = macd
-    }
-
-
 
 }
 export default new RealPowerStore()

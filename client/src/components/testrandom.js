@@ -4,6 +4,7 @@ import Store from './store'
 import {observer}from 'mobx-react'
 import {point} from './point'
 import {BalanceOfPowerPoint} from '../components/BalanceOfPower/BalanceOfPowerPoint'
+import {BolindgerPoint} from '../components/Bolindger/Bolindger'
 import TestnetService from '../Service/TestnetService'
 import './test.scss'
 import moment from 'moment'
@@ -21,10 +22,9 @@ export  const TestRandom = observer(() => {
         const unix = moment().unix()
 
         for(let i = period;i >= 0;i--){
-            console.log('work')
             const a = i * 1000 * 60
             const unixms = (unix - a) * 1000
-            const res = await client.futuresCandles({ symbol: 'BTCUSDT',interval:'1m',limit:1000, startTime:unixms, })
+            const res = await client.futuresCandles({ symbol: 'BTCUSDT',interval:'30m',limit:1000, startTime:unixms, })
             newArr = [...newArr,...res]
         }
 
@@ -35,10 +35,12 @@ export  const TestRandom = observer(() => {
         try{
             if(!candles.length){
                 const res = await createArr(10)
-                BalanceOfPowerPoint(res,deposit,setDeposit,setInfo,setAll,setPlus)
+                // BalanceOfPowerPoint(res,deposit,setDeposit,setInfo,setAll,setPlus)
                 setCandels(res)
+                BolindgerPoint(res,deposit,setDeposit,setInfo,setAll,setPlus)
             } else {
-                BalanceOfPowerPoint(candles,deposit,setDeposit,setInfo,setAll,setPlus)
+                // BalanceOfPowerPoint(candles,deposit,setDeposit,setInfo,setAll,setPlus)
+                BolindgerPoint(candles,deposit,setDeposit,setInfo,setAll,setPlus)
             }
             
 
@@ -62,7 +64,7 @@ export  const TestRandom = observer(() => {
         <div className='info'>
                {info.length?
                 info.map((el,idx)=>{
-                    const color = el.toggle? el.position === 'SELL'? 'red':'green': 'yellow'
+                    const color = !el.toggle? el.position === 'SELL'? 'red':'green': 'yellow'
                     return(
                         <div key={`${el.high}${idx}`} className='info-block' style={{backgroundColor:color}}>
                             <span>Depo:   {el.newDeposit}</span>
@@ -74,7 +76,7 @@ export  const TestRandom = observer(() => {
                             <span>TakeProfit:   {el.takeProfit}</span>
                             <span>StopLoss:   {el.stopLoss}</span>
                             <span>Цена входа {el.price}</span>
-                            <span>Переключатель {el.toggle?"ВКЛ":"ВЫКЛ"}</span>
+                            <span>Переключатель {!el.toggle?"ВКЛ":"ВЫКЛ"}</span>
                             <span>Позиция в монетах {el.coins}</span>
                             <span>Риск {el.risk}</span>
                             <span>Комиссия {el.fee}</span>

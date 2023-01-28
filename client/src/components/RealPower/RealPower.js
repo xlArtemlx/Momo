@@ -4,15 +4,12 @@ import { observer } from 'mobx-react';
 import './RealPower.scss'
 
 export const RealPower = observer(() => {
-    const {setBalanceOfPower,info,setToggle,count,countPercent,balance,currentBofP,MACD} = RealPowerStore
+    const {startTraiding,info,count,countPercent,balance, setIsTraiding} = RealPowerStore
     return(
         <div>
             <div style={{display:'flex',justifyContent:'center'}}>
                 <div style={{marginBottom:'25px',marginRight:'15px'}}>
                     Депозит: {balance}
-                </div>
-                <div style={{marginBottom:'25px',marginRight:'15px'}}>
-                    MACD: {MACD.histogram}
                 </div>
             </div>  
             <div style={{marginBottom:'25px'}}>
@@ -21,17 +18,17 @@ export const RealPower = observer(() => {
                 </span>
             </div>
             <div >
-                <button style={{marginRight:'25px'}} onClick={setBalanceOfPower}>
+                <button style={{marginRight:'25px'}} onClick={startTraiding}>
                     Start
                 </button>
-                <button onClick={setToggle}>
+                <button onClick={() => setIsTraiding(false)}>
                     Stop
                 </button>
             </div>
             <div className='info'>
                {info.length?
                 info.map((el,idx)=>{
-                    const color = el.toggle? el.position === 'SELL'? 'red':'green': 'yellow'
+                    const color = el.position === 'SELL'? 'red':'green'
                     return(
                         <div key={`${el.high}${idx}`} className='info-block' style={{backgroundColor:color}}>
                             <span>Depo:   {el.balance}</span>
