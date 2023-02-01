@@ -116,9 +116,10 @@ class RealPowerStore {
         return newClose(candles)
     }
     createOrder = async (side) => {
+       setTimeout(async () => { // setTimeout need becouse status fails to change
         this.setStatus(info.openLimit)
         const balance = Number(getDepoUSDT(await TestnetService.balance()))
-        const oldDepo = +(balance/100).toFixed(2)
+        const oldDepo = +(balance/10).toFixed(2)
         const price = side === 'BUY'? Number(this.ask): Number(this.bid)
         let oldMarga = +(oldDepo * this.shoulder).toFixed(2)
         let coin = round((oldMarga / price),4)
@@ -156,7 +157,10 @@ class RealPowerStore {
             price: price,
             timeInForce: 'GTC'
         }
-        await TestnetService.order(order) // ORDER OFF =====================
+
+        await TestnetService.order(order)
+        
+       }, 1000)
     }
 
     createProfitOrders = async () => {
@@ -182,24 +186,27 @@ class RealPowerStore {
             price: this.position.stopLoss, 
         }
         this.setStatus(info.openPosition)
+
         TestnetService.order(orderProfit)
-        await TestnetService.order(orderStop)
+        TestnetService.order(orderStop)
     }
 
     check = async () => {
-        // if(!checkTime()) return
-        if(this.status === info.openLimit||this.status === info.openPosition) return
+        if(!checkTime()) return
         if(!this.isTraiding) return
+
+        if(this.status === info.openLimit||this.status === info.openPosition) return
         const candles = await this.fetchAllCandles()
         if(!candles.length)return
         candles.pop()
         const {upper, lower} = bolindger(candles, this.period)
-        console.log(upper, lower)
+        console.log(upper, lower, candles[candles.length-1])
         if(candles[candles.length-1] < lower){
             this.createOrder('BUY')
         }else if(candles[candles.length-1] > upper){
             this.createOrder('SELL')
         }
+
     }
 
     restart = async () => {

@@ -53,7 +53,7 @@ export const BolindgerPoint= (arrCandles,deposit,setDeposit,setInfo,setAll,setPl
     let all = 0
     let fee = 0
     let slide = riskPercent
-    const coef = 3.5
+    const coef = 3
 
     
     for(let i = 0; i < arr.length; i++){

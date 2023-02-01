@@ -4,7 +4,7 @@ import { observer } from 'mobx-react';
 import './RealPower.scss'
 
 export const RealPower = observer(() => {
-    const {startTraiding,info,count,countPercent,balance, setIsTraiding} = RealPowerStore
+    const {startTraiding,info,count,countPercent,balance, setIsTraiding, isTraiding} = RealPowerStore
     return(
         <div>
             <div style={{display:'flex',justifyContent:'center'}}>
@@ -15,6 +15,11 @@ export const RealPower = observer(() => {
             <div style={{marginBottom:'25px'}}>
                 <span style={{marginRight:'25px'}} >
                    Точность: {count!==0?countPercent*100/count:0}
+                </span>
+            </div>
+            <div style={{marginBottom:'25px'}}>
+                <span style={{marginRight:'25px'}} >
+                   Traiding: {isTraiding ? "ON" : "OFF"}
                 </span>
             </div>
             <div >
@@ -42,9 +47,6 @@ export const RealPower = observer(() => {
                             <span>Комиссия {el.fee}</span>
                             <span>Рассчитаный профит {el.profit}</span>
                             <span>Маржа {el.marga}</span>
-                            <span>MACD {el.MACD.toFixed(3)}</span>
-                            <span>Histogram {el.histogram.toFixed(3)}</span>
-                            <span>Signal {el.signal.toFixed(3)}</span>
                         </div>
                     )
                 })
